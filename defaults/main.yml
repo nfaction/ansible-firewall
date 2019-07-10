@@ -1,0 +1,10 @@
+---
+
+FW_PORTS:
+  TCP:
+    - 22
+  UDP: []
+  SERVICES:
+    - ssh
+  SUBNETS:
+    - '192.168.1.0/24'

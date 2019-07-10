@@ -1,0 +1,149 @@
+---
+
+- name: configure ufw
+  block:
+    - name: install ufw
+      package:
+        name: ufw
+        state: present
+
+    - name: ensure ufw is running
+      service:
+        name: ufw
+        state: started
+        enabled: true
+
+    - name: enable tcp ports
+      ufw:
+        rule: allow
+        port: '{{ item }}'
+        proto: 'tcp'
+      with_items: '{{ FW_PORTS.TCP }}'
+      when: FW_PORTS.TCP is defined
+
+    - name: enable single udp ports
+      ufw:
+        rule: allow
+        port: '{{ item }}'
+        proto: 'udp'
+      with_items: '{{ FW_PORTS.UDP }}'
+      when:
+        - FW_PORTS.UDP is defined
+        - '"-" not in item'
+
+    - name: enable udp port ranges
+      ufw:
+        rule: allow
+        port: "{{ item | regex_replace('-', ':')}}"
+        proto: 'udp'
+      with_items: '{{ FW_PORTS.UDP }}'
+      when:
+        - FW_PORTS.UDP is defined
+        - '"-" in item'
+
+    - name: enable services
+      ufw:
+        name: '{{ item }}'
+        rule: allow
+      with_items: '{{ FW_PORTS.SERVICES }}'
+      when: FW_PORTS.SERVICES is defined
+
+    - name: enable subnet access
+      ufw:
+        src: '{{ item }}'
+        rule: allow
+      with_items: '{{ FW_PORTS.SUBNETS }}'
+      when: FW_PORTS.SUBNETS is defined
+
+    - name: deny all and allow some
+      ufw:
+        state: enabled
+        policy: deny
+
+    - name: Set logging
+      ufw:
+        logging: true
+
+    - name: verify state
+      shell: '{{ item }}'
+      register: fw_state
+      changed_when: false
+      with_items:
+        - "ufw status verbose"
+      tags:
+        - verify
+
+    - name: display output
+      debug:
+        msg: '{{ item.stdout_lines }}'
+        verbosity: 4
+      with_items: '{{ fw_state.results }}'
+      tags:
+        - verify
+  when:
+    - ansible_os_family == "Debian"
+
+- name: configure firewalld
+  block:
+    - name: install dependencies
+      package:
+        name: python-firewall
+        state: present
+
+    - name: ensure firewalld is running
+      service:
+        name: firewalld
+        state: started
+        enabled: true
+
+    - name: enable tcp ports
+      firewalld:
+        port: '{{ item }}/tcp'
+        permanent: true
+        state: enabled
+      with_items: '{{ FW_PORTS.TCP }}'
+      when: FW_PORTS.TCP is defined
+
+    - name: enable udp ports
+      firewalld:
+        port: '{{ item }}/udp'
+        permanent: true
+        state: enabled
+      with_items: '{{ FW_PORTS.UDP }}'
+      when: FW_PORTS.UDP is defined
+
+    - name: enable services
+      firewalld:
+        service: '{{ item }}'
+        permanent: true
+        state: enabled
+      with_items: '{{ FW_PORTS.SERVICES }}'
+      when: FW_PORTS.SERVICES is defined
+
+    - name: enable subnet access
+      firewalld:
+        source: '{{ item }}'
+        permanent: true
+        state: enabled
+      with_items: '{{ FW_PORTS.SUBNETS }}'
+      when: FW_PORTS.SUBNETS is defined
+
+    - name: verify state
+      shell: '{{ item }}'
+      register: fw_state
+      changed_when: false
+      with_items:
+        - firewall-cmd --list-ports --zone=public
+        - firewall-cmd --list-services --zone=public
+      tags:
+        - verify
+
+    - name: display output
+      debug:
+        msg: '{{ item.stdout_lines }}'
+        verbosity: 4
+      with_items: '{{ fw_state.results }}'
+      tags:
+        - verify
+  when:
+    - ansible_os_family == "RedHat"
