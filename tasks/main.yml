@@ -13,47 +13,29 @@
         state: started
         enabled: true
 
-    - name: enable tcp ports
+    - name: configure ufw rules
       ufw:
-        rule: allow
-        port: '{{ item }}'
-        proto: 'tcp'
-      with_items: '{{ FW_PORTS.TCP }}'
-      when: FW_PORTS.TCP is defined
-
-    - name: enable single udp ports
-      ufw:
-        rule: allow
-        port: '{{ item }}'
-        proto: 'udp'
-      with_items: '{{ FW_PORTS.UDP }}'
-      when:
-        - FW_PORTS.UDP is defined
-        - '"-" not in item'
-
-    - name: enable udp port ranges
-      ufw:
-        rule: allow
-        port: "{{ item | regex_replace('-', ':')}}"
-        proto: 'udp'
-      with_items: '{{ FW_PORTS.UDP }}'
-      when:
-        - FW_PORTS.UDP is defined
-        - '"-" in item'
-
-    - name: enable services
-      ufw:
-        name: '{{ item }}'
-        rule: allow
-      with_items: '{{ FW_PORTS.SERVICES }}'
-      when: FW_PORTS.SERVICES is defined
-
-    - name: enable subnet access
-      ufw:
-        src: '{{ item }}'
-        rule: allow
-      with_items: '{{ FW_PORTS.SUBNETS }}'
-      when: FW_PORTS.SUBNETS is defined
+        comment: "{{ item.0.comment | default(omit) }}"
+        default: "{{ item.0.default | default(omit) }}"
+        delete: "{{ item.0.delete | default(omit) }}"
+        direction: "{{ item.0.direction | default(omit) }}"
+        from_ip: "{{ item.1 | default(omit) }}"
+        from_port: "{{ item.0.from_port | default(omit) }}"
+        insert: "{{ item.0.insert | default(omit) }}"
+        insert_relative_to: "{{ item.0.insert_relative_to | default(omit) }}"
+        interface: "{{ item.0.interface | default(omit) }}"
+        log: "{{ item.0.log | default(omit) }}"
+        logging: "{{ item.0.logging | default(omit) }}"
+        name: "{{ item.0.rule_name | default(omit) }}"
+        proto: "{{ item.0.proto | default(omit) }}"
+        route: "{{ item.0.route | default(omit) }}"
+        rule: "{{ item.0.rule | default(omit) }}"
+        state: "{{ item.0.state | default(omit) }}"
+        to_ip: "{{ item.0.to_ip | default(omit) }}"
+        to_port: "{{ item.0.to_port | default(omit) }}"
+      with_subelements:
+        - "{{ fw_ports }}"
+        - from_ip
 
     - name: deny all and allow some
       ufw:
