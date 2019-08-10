@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>{{ item.short_name }}</short>
+  <description>{{ item.description }}</description>
+  <port protocol="{{ item.proto }}" port="{{ item.port }}"/>
+{% if item.proto_value is defined %}
+  <protocol value="{{ item.proto_value }}"/>
+{% endif %}
+{% if item.module_name is defined %}
+  <module name="{{ item.module_name }}"/>
+{% endif %}
+{% if item.ipv4 is defined and item.ipv6 is defined %}
+  <destination ipv4="item.ipv4" ipv6="item.ipv6"/>
+{% endif %}
+</service>

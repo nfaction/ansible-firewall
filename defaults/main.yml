@@ -28,8 +28,19 @@ fw_ranged_ports_from_subnet: []
 ################
 # UFW Settings #
 ################
-ufw_complex_rules: []
-
 ufw_logging_setting: true
 
 ufw_apps: []
+
+ufw_complex_rules: []
+
+######################
+# FirewallD Settings #
+######################
+firewalld_services_path: "/etc/firewalld/services"
+# System installed firewalld services
+# firewalld_services_path: "/usr/lib/firewalld"
+
+firewalld_services: []
+
+firewalld_complex_rules: []

@@ -14,6 +14,7 @@
     - fw-ranged-ports
     - ufw-complex-rules
     - ufw-apps
+    - firewalld-services
 
 #########################
 # Configuration Profile #
@@ -25,6 +26,7 @@
     - fw-ranged-ports
     - ufw-complex-rules
     - ufw-apps
+    - firewalld-services
 
 ##############################
 # Install Specified Firewall #
@@ -169,54 +171,111 @@
         state: started
         enabled: true
 
-    - name: enable tcp ports
+    - name: configure fw ports
       firewalld:
-        port: '{{ item }}/tcp'
-        permanent: true
-        state: enabled
-      with_items: '{{ FW_PORTS.TCP }}'
-      when: FW_PORTS.TCP is defined
-
-    - name: enable udp ports
-      firewalld:
-        port: '{{ item }}/udp'
-        permanent: true
-        state: enabled
-      with_items: '{{ FW_PORTS.UDP }}'
-      when: FW_PORTS.UDP is defined
-
-    - name: enable services
-      firewalld:
-        service: '{{ item }}'
-        permanent: true
-        state: enabled
-      with_items: '{{ FW_PORTS.SERVICES }}'
-      when: FW_PORTS.SERVICES is defined
-
-    - name: enable subnet access
-      firewalld:
-        source: '{{ item }}'
-        permanent: true
-        state: enabled
-      with_items: '{{ FW_PORTS.SUBNETS }}'
-      when: FW_PORTS.SUBNETS is defined
-
-    - name: verify state
-      shell: '{{ item }}'
-      register: fw_state
-      changed_when: false
+        port: "{{ item.port }}/{{ item.proto }}"
+        permanent: "{{ item.permanent | default('true') }}"
+        zone: "{{ item.zone | default('public') }}"
+        state: "{{ item.state }}"
       with_items:
-        - firewall-cmd --list-ports --zone=public
-        - firewall-cmd --list-services --zone=public
+        - "{{ fw_ports }}"
+      notify:
+        - reload firewalld
       tags:
-        - verify
+        - fw-ports
 
-    - name: display output
-      debug:
-        msg: '{{ item.stdout_lines }}'
-        verbosity: 4
-      with_items: '{{ fw_state.results }}'
+    - name: configure fw ports from subnets
+      firewalld:
+        port: "{{ item.0.port }}/{{ item.0.proto }}"
+        permanent: "{{ item.0.permanent | default('true') }}"
+        zone: "{{ item.0.zone | default('public') }}"
+        source: "{{ item.1 }}"
+        state: "{{ item.0.state }}"
+      with_subelements:
+        - "{{ fw_ports_from_subnet }}"
+        - from_subnet
+      notify:
+        - reload firewalld
       tags:
-        - verify
+        - fw-ports
+
+    - name: configure ranged fw ports
+      firewalld:
+        port: "{{ item.from_ranged_port }}-{{ item.to_ranged_port }}/{{ item.proto }}"
+        permanent: "{{ item.permanent | default('true') }}"
+        zone: "{{ item.zone | default('public') }}"
+        state: "{{ item.state }}"
+      with_items:
+        - "{{ fw_ranged_ports }}"
+      notify:
+        - reload firewalld
+      tags:
+        - fw-ranged-ports
+
+    - name: configure ranged fw ports from subnets
+      firewalld:
+        port: "{{ item.0.from_ranged_port }}-{{ item.0.to_ranged_port }}/{{ item.0.proto }}"
+        permanent: "{{ item.0.permanent | default('true') }}"
+        zone: "{{ item.0.zone | default('public') }}"
+        source: "{{ item.1 }}"
+        state: "{{ item.0.state }}"
+      with_subelements:
+        - "{{ fw_ranged_ports_from_subnet }}"
+        - from_subnet
+      notify:
+        - reload firewalld
+      tags:
+        - fw-ranged-ports
+
+    - name: configure firewalld service templates
+      template:
+        src: firewalld_service.xml.j2
+        dest: "{{ firewalld_services_path }}/{{ item.file }}"
+        owner: "{{ item.owner | default('root') }}"
+        group: "{{ item.group | default('root') }}"
+        mode: "{{ item.mode | default('0644') }}"
+      with_items:
+        - "{{ firewalld_services }}"
+      notify:
+        - reload firewalld
+      tags:
+        - firewalld-services
+
+    # Default list can be found by running: firewall-cmd --get-services
+    - name: configure firewalld services
+      firewalld:
+        service: "{{ item.service }}"
+        permanent: "{{ item.permanent | default(true) }}"
+        zone: "{{ item.zone | default('public') }}"
+        state: "{{ item.state | default('enabled') }}"
+      with_items:
+        - "{{ firewalld_services }}"
+      notify:
+        - reload firewalld
+      tags:
+        - firewalld-services
+
+    - name: configure complex firewalld rules
+      firewalld:
+        icmp_block: "{{ item.icmp_block | default(omit) }}"
+        icmp_block_inversion: "{{ item.icmp_block_inversion | default(omit) }}"
+        immediate: "{{ item.immediate | default(omit) }}"
+        interface: "{{ item.interface | default(omit) }}"
+        masquerade: "{{ item.masquerade | default(omit) }}"
+        offline: "{{ item.offline | default(omit) }}"
+        permanent: "{{ item.permanent | default(omit) }}"
+        port: "{{ item.port | default(omit) }}"
+        rich_rule: "{{ item.rich_rule | default(omit) }}"
+        service: "{{ item.service | default(omit) }}"
+        source: "{{ item.source | default(omit) }}"
+        state: "{{ item.state | default(omit) }}"
+        timeout: "{{ item.timeout | default(omit) }}"
+        zone: "{{ item.zone | default(omit) }}"
+      with_items:
+        - "{{ firewalld_complex_rules }}"
+      notify:
+        - reload firewalld
+      tags:
+        - firewalld-complex-rules
   when:
     - firewall_profile == "firewalld"
