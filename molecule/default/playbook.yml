@@ -1,7 +1,67 @@
 ---
 - name: Converge
   hosts: all
-  vars: []
-  # os_vars_dir: ../../../../group_vars/operating-systems
+  vars:
+    fw_subnets:
+      - '192.168.1.0/24'
+
+    fw_ports:
+      - name: openssh-server for subnet
+        port: 22
+        proto: tcp
+        rule: allow
+        state: enabled
+
+    fw_ranged_ports:
+      - name: mosh sever
+        from_ranged_port: 60000
+        to_ranged_port: 61000
+        proto: udp
+        rule: allow
+        state: enabled
+
+    fw_ports_from_subnet:
+      - name: openssh-server for subnet
+        port: 22
+        proto: tcp
+        rule: allow
+        state: enabled
+        from_subnet: "{{ fw_subnets }}"
+
+    fw_ranged_ports_from_subnet:
+      - name: mosh sever
+        from_ranged_port: 60000
+        to_ranged_port: 61000
+        proto: udp
+        rule: allow
+        state: enabled
+        from_subnet: "{{ fw_subnets }}"
+
+    ufw_apps:
+      - name: openssh-server app
+        file: openssh-server
+        app_name: "OpenSSH"
+        title: "Secure shell server, an rshd replacement"
+        description: "OpenSSH is a free implementation of the Secure Shell protocol."
+        rule: allow
+        ports:
+          - port: 22
+            proto: tcp
+      - name: test app
+        file: test
+        app_name: "Test"
+        title: "Test application for multiple ports"
+        description: "testing..."
+        rule: allow
+        ports:
+          - port: 10004
+            proto: tcp
+          - port: 10005
+            proto: tcp
+          - port: "10000:10002"
+            proto: tcp
+          - port: "10003,10009"
+            proto: udp
+
   roles:
     - role: ansible-firewall

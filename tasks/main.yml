@@ -1,77 +1,168 @@
 ---
+###################
+# Gather OS Facts #
+###################
+- name: gather os specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_distribution }}-{{ ansible_distribution_major_version }}.yml"
+    - "{{ ansible_distribution }}.yml"
+    - "{{ ansible_os_family }}.yml"
+    - "default.yml"
+  tags:
+    - fw-ports
+    - fw-ranged-ports
+    - ufw-complex-rules
+    - ufw-apps
 
+#########################
+# Configuration Profile #
+#########################
+- name: include firewall profile
+  include_vars: "{{ firewall_profile }}.yml"
+  tags:
+    - fw-ports
+    - fw-ranged-ports
+    - ufw-complex-rules
+    - ufw-apps
+
+##############################
+# Install Specified Firewall #
+##############################
+- name: remove conflicting firewall packages
+  package:
+    name: "{{ item }}"
+    state: absent
+    use: "{{ package_mgr_to_use }}"
+  with_items:
+    - "{{ firewall_packages_to_remove | default([]) }}"
+
+- name: install firewall pacakges
+  package:
+    name: "{{ item }}"
+    state: present
+    use: "{{ package_mgr_to_use }}"
+  with_items:
+    - "{{ firewall_pacakges_to_install | default([]) }}"
+
+#################
+# Configure UFW #
+#################
 - name: configure ufw
   block:
-    - name: install ufw
-      package:
-        name: ufw
-        state: present
-
     - name: ensure ufw is running
       service:
         name: ufw
         state: started
         enabled: true
 
-    - name: configure ufw rules
+    - name: configure fw ports
       ufw:
-        comment: "{{ item.0.comment | default(omit) }}"
-        default: "{{ item.0.default | default(omit) }}"
-        delete: "{{ item.0.delete | default(omit) }}"
-        direction: "{{ item.0.direction | default(omit) }}"
-        from_ip: "{{ item.1 | default(omit) }}"
-        from_port: "{{ item.0.from_port | default(omit) }}"
-        insert: "{{ item.0.insert | default(omit) }}"
-        insert_relative_to: "{{ item.0.insert_relative_to | default(omit) }}"
-        interface: "{{ item.0.interface | default(omit) }}"
-        log: "{{ item.0.log | default(omit) }}"
-        logging: "{{ item.0.logging | default(omit) }}"
-        name: "{{ item.0.rule_name | default(omit) }}"
-        proto: "{{ item.0.proto | default(omit) }}"
-        route: "{{ item.0.route | default(omit) }}"
-        rule: "{{ item.0.rule | default(omit) }}"
-        state: "{{ item.0.state | default(omit) }}"
-        to_ip: "{{ item.0.to_ip | default(omit) }}"
-        to_port: "{{ item.0.to_port | default(omit) }}"
-      with_subelements:
+        port: "{{ item.port }}"
+        proto: "{{ item.proto }}"
+        rule: "{{ item.rule }}"
+      with_items:
         - "{{ fw_ports }}"
-        - from_ip
+      tags:
+        - fw-ports
+
+    - name: configure fw ports from subnets
+      ufw:
+        port: "{{ item.0.port }}"
+        proto: "{{ item.0.proto }}"
+        rule: "{{ item.0.rule }}"
+        from_ip: "{{ item.1 }}"
+      with_subelements:
+        - "{{ fw_ports_from_subnet }}"
+        - from_subnet
+      tags:
+        - fw-ports
+
+    - name: configure ranged fw ports
+      ufw:
+        port: "{{ item.from_ranged_port }}:{{ item.to_ranged_port }}"
+        proto: "{{ item.proto }}"
+        rule: "{{ item.rule }}"
+      with_items:
+        - "{{ fw_ranged_ports }}"
+      tags:
+        - fw-ranged-ports
+
+    - name: configure ranged fw ports from subnets
+      ufw:
+        port: "{{ item.0.from_ranged_port }}:{{ item.0.to_ranged_port }}"
+        proto: "{{ item.0.proto }}"
+        rule: "{{ item.0.rule }}"
+        from_ip: "{{ item.1 }}"
+      with_subelements:
+        - "{{ fw_ranged_ports_from_subnet }}"
+        - from_subnet
+      tags:
+        - fw-ranged-ports
+
+    - name: configure ufw app templates
+      template:
+        src: ufw_app.j2
+        dest: "/etc/ufw/applications.d/{{ item.file }}"
+        owner: "{{ item.owner | default('root') }}"
+        group: "{{ item.group | default('root') }}"
+        mode: "{{ item.mode | default('0644') }}"
+      with_items:
+        - "{{ ufw_apps }}"
+      tags:
+        - ufw-apps
+
+    - name: configure ufw app profiles
+      ufw:
+        name: "{{ item.app_name }}"
+        rule: "{{ item.rule }}"
+        delete: "{{ item.delete | default(omit) }}"
+      with_items:
+        - "{{ ufw_apps }}"
+      tags:
+        - ufw-apps
+
+    - name: configure complex ufw rules
+      ufw:
+        comment: "{{ item.comment | default(omit) }}"
+        default: "{{ item.default | default(omit) }}"
+        delete: "{{ item.delete | default(omit) }}"
+        direction: "{{ item.direction | default(omit) }}"
+        from_ip: "{{ item | default(omit) }}"
+        from_port: "{{ item.from_port | default(omit) }}"
+        insert: "{{ item.insert | default(omit) }}"
+        insert_relative_to: "{{ item.insert_relative_to | default(omit) }}"
+        interface: "{{ item.interface | default(omit) }}"
+        log: "{{ item.log | default(omit) }}"
+        logging: "{{ item.logging | default(omit) }}"
+        name: "{{ item.rule_name | default(omit) }}"
+        proto: "{{ item.proto | default(omit) }}"
+        route: "{{ item.route | default(omit) }}"
+        rule: "{{ item.rule | default(omit) }}"
+        state: "{{ item.state | default(omit) }}"
+        to_ip: "{{ item.to_ip | default(omit) }}"
+        to_port: "{{ item.to_port | default(omit) }}"
+      with_items:
+        - "{{ ufw_complex_rules }}"
+      tags:
+        - ufw-complex-rules
 
     - name: deny all and allow some
       ufw:
         state: enabled
-        policy: deny
+        policy: "{{ fw_default_policy }}"
 
     - name: Set logging
       ufw:
-        logging: true
-
-    - name: verify state
-      shell: '{{ item }}'
-      register: fw_state
-      changed_when: false
-      with_items:
-        - "ufw status verbose"
-      tags:
-        - verify
-
-    - name: display output
-      debug:
-        msg: '{{ item.stdout_lines }}'
-        verbosity: 4
-      with_items: '{{ fw_state.results }}'
-      tags:
-        - verify
+        logging: "{{ ufw_logging_setting }}"
   when:
-    - ansible_os_family == "Debian"
+    - firewall_profile == "ufw"
 
+#######################
+# Configure FirewallD #
+#######################
 - name: configure firewalld
   block:
-    - name: install dependencies
-      package:
-        name: python-firewall
-        state: present
-
     - name: ensure firewalld is running
       service:
         name: firewalld
@@ -128,4 +219,4 @@
       tags:
         - verify
   when:
-    - ansible_os_family == "RedHat"
+    - firewall_profile == "firewalld"

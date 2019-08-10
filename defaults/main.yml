@@ -1,11 +1,35 @@
 ---
 
-enabled_subnets:
-  - '192.168.1.0/24'
+firewall_profile: iptables
 
-fw_ports:
-  - name: open ssh for subnet
-    proto: tcp
-    port: 22
-    rule: allow
-    from_ip: "{{ enabled_subnets }}"
+#####################
+# Firewall packages #
+#####################
+package_mgr_to_use: auto
+
+firewall_packages_to_remove: []
+firewall_pacakges_to_install: []
+
+#####################
+# Firewall settings #
+#####################
+fw_default_policy: deny
+
+fw_subnets: []
+
+fw_ports: []
+
+fw_ranged_ports: []
+
+fw_ports_from_subnet: []
+
+fw_ranged_ports_from_subnet: []
+
+################
+# UFW Settings #
+################
+ufw_complex_rules: []
+
+ufw_logging_setting: true
+
+ufw_apps: []

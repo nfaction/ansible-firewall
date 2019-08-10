@@ -1,0 +1,3 @@
+---
+
+firewall_pacakges_to_install: "{{ firewalld_packages }}"
