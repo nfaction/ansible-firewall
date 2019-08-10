@@ -1,0 +1,4 @@
+[{{ item.app_name }}]
+title={{ item.title }}
+description={{ item.description }}
+ports={% for fw in item.ports %}{{ fw.port }}/{{ fw.proto }}{% if not loop.last %}|{% endif %}{% endfor %}
