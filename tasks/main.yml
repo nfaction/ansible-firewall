@@ -149,6 +149,15 @@
       tags:
         - ufw-complex-rules
 
+    - name: allow all from networks to this host
+      ufw:
+        rule: allow
+        src: "{{ item }}"
+      with_items:
+        - "{{ fw_subnets }}"
+      when:
+        - allow_subnets_to_host | bool
+
     - name: deny all and allow some
       ufw:
         state: enabled

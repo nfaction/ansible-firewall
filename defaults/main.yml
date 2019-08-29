@@ -17,6 +17,8 @@ fw_default_policy: deny
 
 fw_subnets: []
 
+allow_subnets_to_host: false
+
 fw_ports: []
 
 fw_ranged_ports: []
