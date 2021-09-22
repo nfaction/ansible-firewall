@@ -1,5 +1,7 @@
 ---
 galaxy_info:
+  role_name: firewall
+  namespace: ansible
   author: Matthew DePorter
   description: Role to install and configure the host's firewall
   company: Mobile-Tech LLC

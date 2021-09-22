@@ -1,6 +1,6 @@
 # ansible-firewall
 
-[![Build Status](https://travis-ci.org/nfaction/ansible-firewall.svg?branch=master)](https://travis-ci.org/nfaction/ansible-firewall)
+[![Ansible Molecule Test Matrix](https://github.com/nfaction/ansible-firewall/actions/workflows/molecule.yml/badge.svg)](https://github.com/nfaction/ansible-firewall/actions/workflows/molecule.yml)
 
 Role to configure the host's firewall
 
