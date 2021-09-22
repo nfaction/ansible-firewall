@@ -31,6 +31,13 @@
 ##############################
 # Install Specified Firewall #
 ##############################
+- name: perform an apt update
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when:
+    - ansible_os_family == 'Debian'
+
 - name: remove conflicting firewall packages
   package:
     name: "{{ item }}"
