@@ -52,7 +52,7 @@
     state: present
     use: "{{ package_mgr_to_use }}"
   with_items:
-    - "{{ firewall_pacakges_to_install | default([]) }}"
+    - "{{ firewall_packages_to_install | default([]) }}"
 
 #################
 # Configure UFW #
