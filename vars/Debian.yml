@@ -5,4 +5,3 @@ firewall_profile: ufw
 ufw_packages:
   - procps
   - ufw
-
